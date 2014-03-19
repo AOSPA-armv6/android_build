@@ -1398,9 +1398,16 @@ else
     OTA_FROM_TARGET_SCRIPT := $(TARGET_RELEASETOOL_OTA_FROM_TARGET_SCRIPT)
 endif
 
+ifneq ($(TARGET_OTA_EXTRAS_FILE),)
+    $(INTERNAL_OTA_PACKAGE_TARGET): extras_file := $(TARGET_OTA_EXTRAS_FILE)
+else
+    $(INTERNAL_OTA_PACKAGE_TARGET): extras_file := build/tools/releasetools/extras.txt
+endif
+
 $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 	@echo "$(OTA_FROM_TARGET_SCRIPT)" > $(PRODUCT_OUT)/ota_script_path
 	@echo "$(override_device)" > $(PRODUCT_OUT)/ota_override_device
+	@echo "$(extras_file)" > $(PRODUCT_OUT)/ota_extras_file
 	@echo "$(BOARD_CUSTOM_BOOTIMG_MK)" > $(PRODUCT_OUT)/ota_custom_bootimg_mk
 	@echo -e ${CL_YLW}"Package OTA:"${CL_RST}" $@"
 	MKBOOTIMG=$(BOARD_CUSTOM_BOOTIMG_MK) \
@@ -1408,6 +1415,7 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 	   -p $(HOST_OUT) \
 	   -k $(KEY_CERT_PAIR) \
 	   --override_device=$(override_device) $(override_prop) \
+	   --extras_file=$(extras_file) \
 	   $(BUILT_TARGET_FILES_PACKAGE) $@
 
 CUSTOM_TARGET_PACKAGE := $(PRODUCT_OUT)/$(TARGET_PRODUCT)-$(ROM_VERSION).zip
