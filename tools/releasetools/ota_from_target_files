@@ -59,6 +59,9 @@ Usage:  ota_from_target_files [flags] input_target_files output_ota_package
       Override build.prop items with custom vendor init.
       Enabled when TARGET_UNIFIED_DEVICE is defined in BoardConfig
 
+  --extras_file <file>
+      Extras file	  
+
   -2  (--two_step)
       Generate a 'two-step' OTA package, where recovery is updated
       first, so that any changes made to the system partition are done
@@ -103,6 +106,7 @@ OPTIONS.worker_threads = 3
 OPTIONS.backuptool = True
 OPTIONS.override_device = 'auto'
 OPTIONS.override_prop = False
+OPTIONS.extras_file = 'build/tools/releasetools/extras.txt'
 OPTIONS.two_step = False
 
 def MostPopularKey(d, default):
@@ -321,6 +325,7 @@ def CopySystemFiles(input_zip, output_zip=None,
   """
 
   symlinks = []
+  extras_list = [line.strip() for line in open(OPTIONS.extras_file)]
 
   for info in input_zip.infolist():
     if info.filename.startswith("SYSTEM/"):
@@ -330,7 +335,10 @@ def CopySystemFiles(input_zip, output_zip=None,
                          "/system/" + basefilename))
       else:
         info2 = copy.copy(info)
-        fn = info2.filename = "system/" + basefilename
+        if basefilename in extras_list:
+          fn = info2.filename = "extras/" + basefilename
+        else:
+          fn = info2.filename = "system/" + basefilename
         if substitute and fn in substitute and substitute[fn] is None:
           continue
         if output_zip is not None:
@@ -581,10 +589,14 @@ def LoadSystemFiles(z):
   """Load all the files from SYSTEM/... in a given target-files
   ZipFile, and return a dict of {filename: File object}."""
   out = {}
+  extras_list = [line.strip() for line in open(OPTIONS.extras_file)]
   for info in z.infolist():
     if info.filename.startswith("SYSTEM/") and not IsSymlink(info):
       basefilename = info.filename[7:]
-      fn = "system/" + basefilename
+      if basefilename in extras_list:
+        fn = "extras/" + basefilename
+      else:
+        fn = "system/" + basefilename
       data = z.read(info.filename)
       out[fn] = common.File(fn, data)
   return out
@@ -1010,6 +1022,8 @@ def main(argv):
       OPTIONS.override_device = a
     elif o in ("--override_prop"):
       OPTIONS.override_prop = bool(a.lower() == 'true')
+    elif o in ("--extras_file"):
+      OPTIONS.extras_file = str(a)
     elif o in ("-2", "--two_step"):
       OPTIONS.two_step = True
     else:
@@ -1028,6 +1042,7 @@ def main(argv):
                                               "aslr_mode=",
                                               "override_device=",
                                               "override_prop=",
+											  "extras_file=",
                                               "two_step",  
                                               ],
                              extra_option_handler=option_handler)
